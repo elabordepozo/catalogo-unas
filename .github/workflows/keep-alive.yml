@@ -1,0 +1,35 @@
+name: Keep Supabase Awake
+
+on:
+  schedule:
+    # Runs every 6 hours to keep Supabase awake
+    - cron: '0 */6 * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  keep-alive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase to keep it awake
+        run: |
+          echo "🏓 Pinging Supabase to keep database awake..."
+          
+          # Ping the Supabase REST API (just fetching services table)
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
+            "${{ secrets.SUPABASE_URL }}/rest/v1/services?select=id&limit=1" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}")
+          
+          if [ "$RESPONSE" = "200" ]; then
+            echo "✅ Supabase is awake! Status: $RESPONSE"
+          else
+            echo "⚠️ Supabase returned status: $RESPONSE"
+          fi
+
+      - name: Ping Supabase Auth endpoint
+        run: |
+          # Also ping auth endpoint to keep it warm
+          curl -s -o /dev/null \
+            "${{ secrets.SUPABASE_URL }}/auth/v1/health" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}"
+          echo "✅ Auth endpoint pinged"
